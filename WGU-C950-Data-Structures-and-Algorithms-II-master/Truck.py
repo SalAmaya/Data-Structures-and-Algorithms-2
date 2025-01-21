@@ -1,6 +1,16 @@
 from datetime import timedelta
 
 
+class Package:
+    def __init__(self, id_number, delivery_address):
+        self.id_number = id_number
+        self.delivery_address = delivery_address
+        self.delivery_status = None  # e.g., "Pending", "En route", "Delivered"
+        self.assigned_truck_id = None  # To track which truck is delivering this package
+        self.en_route_timestamp = None
+        self.delivery_timestamp = None
+
+
 class Truck:
     # Constants used to change the properties of all Truck objects created
     average_speed = 18
@@ -19,25 +29,21 @@ class Truck:
         self.hub_address = "4001 South 700 East"
         self.at_hub = True
 
-
     # Adds the package to the list of packages that will be delivered by this Truck
     def assign_package(self, package):
         # Only add the Package to the Truck if it does not exceed the maximum number of Packages the Truck can hold
         if len(self.packages_id_list) < self.max_num_packages:
             self.packages_id_list.append(package.id_number)
-            package.assigned_truck_id = self.id
+            package.assigned_truck_id = self.id  # Track which truck is assigned to the package
         else:
             return False
 
-
-    # Space-Time Complexity: O(N)
     # Sets the Delivery Status to "En route" for all Packages loaded onto the Truck
     def set_packages_en_route(self, ht):
         for package_id in self.packages_id_list:
             package = ht.lookup(package_id)
             package.delivery_status = "En route"
             package.en_route_timestamp = self.time_obj
-
 
     # Delivers the Package
     def deliver_package(self, ht, package_id, distance_traveled):
@@ -49,7 +55,7 @@ class Truck:
         self.mileage_timestamps.append([self.total_distance_traveled, self.time_obj])
         package.delivery_status = "Delivered"
         package.delivery_timestamp = self.time_obj
-
+        package.assigned_truck_id = self.id  # Track truck ID after delivery
 
     # Sends the Truck back to the hub and updates the distance covered and time passed for the Truck
     def send_back_to_hub(self, distance_from_hub):
@@ -58,11 +64,9 @@ class Truck:
         self.mileage_timestamps.append([self.total_distance_traveled, self.time_obj])
         self.at_hub = True
 
-
     # Adds mileage to the total distance traveled metric
     def add_mileage(self, miles):
         self.total_distance_traveled = self.total_distance_traveled + miles
-
 
     # Returns a list of Package objects correlating to the Truck's packages_id_list
     def get_package_list(self, ht):
@@ -73,9 +77,34 @@ class Truck:
 
         return packages_list
 
-
     # Returns True if the Truck's number of Packages assigned is equal to the maximum number of Packages it can carry
     def is_full(self):
         if len(self.packages_id_list) == self.max_num_packages:
             return True
         return False
+
+    # Returns a list of packages assigned to the truck, including their delivery status
+    def get_assigned_packages(self, ht):
+        assigned_packages = []
+        for package_id in self.packages_id_list:
+            package = ht.lookup(package_id)
+            assigned_packages.append({
+                "package_id": package.id_number,
+                "status": package.delivery_status,
+                "assigned_truck_id": package.assigned_truck_id,
+                "delivery_timestamp": package.delivery_timestamp
+            })
+        return assigned_packages
+
+
+class HashTable:
+    def __init__(self):
+        self.table = {}
+
+    # Method to insert or update a package in the table
+    def insert(self, package):
+        self.table[package.id_number] = package
+
+    # Method to lookup a package by its ID
+    def lookup(self, package_id):
+        return self.table.get(package_id)
