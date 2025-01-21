@@ -67,3 +67,27 @@ class Package:
             except:
                 pass
 
+
+# Add additional logic for Package handling based on delayed address corrections
+class DeliveryManager:
+    def __init__(self):
+        self.packages = {}  # Dictionary to store packages by their ID
+
+    def add_package(self, package):
+        self.packages[package.id_number] = package
+
+    def get_package(self, package_id):
+        return self.packages.get(package_id)
+
+    def handle_package_delivery(self, package_id, current_time):
+        package = self.get_package(package_id)
+        if package:
+            delayed_arrival_time = package.get_delayed_arrival_time()
+            if delayed_arrival_time:
+                if current_time < delayed_arrival_time:
+                    return f"Package {package_id} will be delivered after {delayed_arrival_time} due to address correction."
+                else:
+                    return f"Package {package_id} has been delivered."
+            else:
+                return f"Package {package_id} has been delivered on time."
+        return "Package not found."
