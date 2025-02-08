@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 
 class Package:
@@ -15,20 +15,20 @@ class Package:
 
 class Truck:
     # Constants used to change the properties of all Truck objects created
-    average_speed = 18
-    max_num_packages = 16
+    average_speed = 18  # miles per hour
+    max_num_packages = 16  # Maximum number of packages a truck can carry
 
     # Truck constructor with optional parameter to define the average speed (in miles per hour) that the truck travels
     def __init__(self, truck_id, mph=average_speed, max_num_packages=max_num_packages):
         self.id = truck_id
-        self.packages_id_list = []
-        self.mph = mph
-        self.max_num_packages = max_num_packages
+        self.packages_id_list = []  # List of package IDs assigned to this truck
+        self.mph = mph  # Truck speed
+        self.max_num_packages = max_num_packages  # Max packages truck can carry
         self.total_distance_traveled = 0
-        self.mileage_timestamps = []
+        self.mileage_timestamps = []  # Keep track of the time and mileage at different points
         self.driver = None
-        self.time_obj = timedelta(hours=8, minutes=0, seconds=0)
-        self.hub_address = "4001 South 700 East"
+        self.time_obj = timedelta(hours=8, minutes=0, seconds=0)  # Starting time for the truck (e.g., 8:00 AM)
+        self.hub_address = "4001 South 700 East"  # Hub location
         self.at_hub = True
 
     # Adds the package to the list of packages that will be delivered by this Truck
@@ -52,7 +52,7 @@ class Truck:
         self.packages_id_list.remove(package_id)
         self.at_hub = False
         self.add_mileage(distance_traveled)
-        self.time_obj += timedelta(minutes=(distance_traveled / self.mph * 60))
+        self.time_obj += timedelta(minutes=(distance_traveled / self.mph * 60))  # Update time based on distance
         self.mileage_timestamps.append([self.total_distance_traveled, self.time_obj])
         package.delivery_status = "Delivered"
         package.delivery_timestamp = self.time_obj
@@ -143,3 +143,36 @@ def display_package_delivery_status(ht, trucks):
             if package["delivery_window"] != "None":
                 print(f"Delivery Window: {package['delivery_window']}")
             print(f"Priority: {package['package_priority']}")
+
+# Creating HashTable
+ht = HashTable()
+
+# Creating Packages
+package1 = Package(id_number=1, delivery_address="123 Main St", priority="High", delivery_window="09:00-11:00")
+package2 = Package(id_number=2, delivery_address="456 Oak St", priority="Low", delivery_window="10:00-12:00")
+package3 = Package(id_number=3, delivery_address="789 Pine St", priority="Normal", delivery_window="None")
+
+# Adding Packages to HashTable
+ht.insert(package1)
+ht.insert(package2)
+ht.insert(package3)
+
+# Creating Trucks
+truck1 = Truck(truck_id=1)
+truck2 = Truck(truck_id=2)
+
+# Assigning packages to trucks
+truck1.assign_package(package1)
+truck1.assign_package(package2)
+truck2.assign_package(package3)
+
+# Creating a list of trucks for displaying delivery status
+trucks = [truck1, truck2]
+
+# Displaying Package Delivery Status
+display_package_delivery_status(ht, trucks)
+
+# Evaluating delivery constraints for truck1
+current_time = "09:30"  # Example current time
+evaluate_delivery_constraints(truck1, ht, current_time)
+
