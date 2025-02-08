@@ -1,178 +1,113 @@
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 
 
 class Package:
-    def __init__(self, id_number, delivery_address, priority=None, delivery_window=None):
+    def __init__(self, id_number, delivery_address, delivery_city, delivery_state, delivery_zip, delivery_deadline,
+                 package_mass, special_notes, delivery_status):
         self.id_number = id_number
         self.delivery_address = delivery_address
-        self.delivery_status = None  # e.g., "Pending", "En route", "Delivered"
-        self.assigned_truck_id = None  # To track which truck is delivering this package
+        self.delivery_city = delivery_city
+        self.delivery_state = delivery_state
+        self.delivery_zip = delivery_zip
+        self.delivery_deadline = delivery_deadline
+        self.package_mass = package_mass
+        self.special_notes = special_notes
+        self.delivery_status = delivery_status
+        self.assigned_truck_id = None
+        self.on_truck = False
         self.en_route_timestamp = None
         self.delivery_timestamp = None
-        self.priority = priority  # Optional: "High", "Low", etc.
-        self.delivery_window = delivery_window  # Optional: e.g., "10:00-12:00"
+
+    def is_truck_assigned(self):
+        return self.assigned_truck_id is not None
+
+    def get_required_truck_id(self):
+        if "Can only be on truck" in self.special_notes:
+            specified_truck_id = [int(i) for i in self.special_notes.split() if i.isdigit()]
+            if specified_truck_id:
+                return specified_truck_id[0]
+        return None
+
+    def get_delayed_arrival_time(self):
+        if "Delayed on flight---will not arrive to depot until" in self.special_notes:
+            tokenized_special_notes = self.special_notes.split()
+            for token in tokenized_special_notes:
+                try:
+                    timestamp = datetime.strptime(token, "%H:%M")
+                    delayed_arrival_timedelta = timedelta(hours=timestamp.hour, minutes=timestamp.minute)
+                    return delayed_arrival_timedelta
+                except:
+                    pass
+        if "Wrong address listed" in self.special_notes:
+            delayed_arrival_timedelta = timedelta(hours=10, minutes=20)
+            return delayed_arrival_timedelta
+        return None
+
+    def get_delivery_deadline_timedelta(self):
+        tokenized_special_notes = self.delivery_deadline.split()
+        for token in tokenized_special_notes:
+            try:
+                timestamp = datetime.strptime(token, "%H:%M")
+                delivery_deadline_timedelta = timedelta(hours=timestamp.hour, minutes=timestamp.minute)
+                return delivery_deadline_timedelta
+            except:
+                pass
 
 
-class Truck:
-    # Constants used to change the properties of all Truck objects created
-    average_speed = 18  # miles per hour
-    max_num_packages = 16  # Maximum number of packages a truck can carry
-
-    # Truck constructor with optional parameter to define the average speed (in miles per hour) that the truck travels
-    def __init__(self, truck_id, mph=average_speed, max_num_packages=max_num_packages):
-        self.id = truck_id
-        self.packages_id_list = []  # List of package IDs assigned to this truck
-        self.mph = mph  # Truck speed
-        self.max_num_packages = max_num_packages  # Max packages truck can carry
-        self.total_distance_traveled = 0
-        self.mileage_timestamps = []  # Keep track of the time and mileage at different points
-        self.driver = None
-        self.time_obj = timedelta(hours=8, minutes=0, seconds=0)  # Starting time for the truck (e.g., 8:00 AM)
-        self.hub_address = "4001 South 700 East"  # Hub location
-        self.at_hub = True
-
-    # Adds the package to the list of packages that will be delivered by this Truck
-    def assign_package(self, package):
-        if len(self.packages_id_list) < self.max_num_packages:
-            self.packages_id_list.append(package.id_number)
-            package.assigned_truck_id = self.id  # Track which truck is assigned to the package
-        else:
-            return False
-
-    # Sets the Delivery Status to "En route" for all Packages loaded onto the Truck
-    def set_packages_en_route(self, ht):
-        for package_id in self.packages_id_list:
-            package = ht.lookup(package_id)
-            package.delivery_status = "En route"
-            package.en_route_timestamp = self.time_obj
-
-    # Delivers the Package
-    def deliver_package(self, ht, package_id, distance_traveled):
-        package = ht.lookup(package_id)
-        self.packages_id_list.remove(package_id)
-        self.at_hub = False
-        self.add_mileage(distance_traveled)
-        self.time_obj += timedelta(minutes=(distance_traveled / self.mph * 60))  # Update time based on distance
-        self.mileage_timestamps.append([self.total_distance_traveled, self.time_obj])
-        package.delivery_status = "Delivered"
-        package.delivery_timestamp = self.time_obj
-        package.assigned_truck_id = self.id  # Track truck ID after delivery
-
-    # Sends the Truck back to the hub and updates the distance covered and time passed for the Truck
-    def send_back_to_hub(self, distance_from_hub):
-        self.add_mileage(distance_from_hub)
-        self.time_obj += timedelta(minutes=(distance_from_hub / self.mph * 60))
-        self.mileage_timestamps.append([self.total_distance_traveled, self.time_obj])
-        self.at_hub = True
-
-    # Adds mileage to the total distance traveled metric
-    def add_mileage(self, miles):
-        self.total_distance_traveled += miles
-
-    # Returns a list of Package objects correlating to the Truck's packages_id_list
-    def get_package_list(self, ht):
-        packages_list = []
-        for package_id in self.packages_id_list:
-            packages_list.append(ht.lookup(package_id))
-        return packages_list
-
-    # Returns True if the Truck's number of Packages assigned is equal to the maximum number of Packages it can carry
-    def is_full(self):
-        return len(self.packages_id_list) == self.max_num_packages
-
-    # Returns a list of packages assigned to the truck, including their delivery status and truck ID
-    def get_assigned_packages(self, ht):
-        assigned_packages = []
-        for package_id in self.packages_id_list:
-            package = ht.lookup(package_id)
-            assigned_packages.append({
-                "package_id": package.id_number,
-                "delivery_address": package.delivery_address,
-                "status": package.delivery_status,
-                "assigned_truck_id": package.assigned_truck_id,
-                "delivery_timestamp": package.delivery_timestamp,
-                "en_route_timestamp": package.en_route_timestamp,
-                "package_priority": package.priority if hasattr(package, "priority") else "Normal",  # Optional priority
-                "delivery_window": package.delivery_window if package.delivery_window else "None",  # Optional delivery window
-            })
-        return assigned_packages
-
-
-class HashTable:
+class DeliveryManager:
     def __init__(self):
-        self.table = {}
+        self.packages = {}  # Dictionary to store packages by their ID
 
-    # Method to insert or update a package in the table
-    def insert(self, package):
-        self.table[package.id_number] = package
+    def add_package(self, package):
+        self.packages[package.id_number] = package
 
-    # Method to lookup a package by its ID
-    def lookup(self, package_id):
-        return self.table.get(package_id)
+    def get_package(self, package_id):
+        return self.packages.get(package_id)
+
+    def handle_package_delivery(self, package_id, current_time):
+        package = self.get_package(package_id)
+        if package:
+            delayed_arrival_time = package.get_delayed_arrival_time()
+            if delayed_arrival_time:
+                if current_time < delayed_arrival_time:
+                    return f"Package {package_id} will be delivered after {delayed_arrival_time} due to address correction."
+                else:
+                    return f"Package {package_id} has been delivered."
+            else:
+                return f"Package {package_id} has been delivered on time."
+        return "Package not found."
 
 
-# Evaluate delivery constraints based on truck assignment and package requirements
-def evaluate_delivery_constraints(truck, ht, current_time):
-    assigned_packages = truck.get_assigned_packages(ht)
+# Example of Bulk Package Creation
+manager = DeliveryManager()
+
+# Create 10 packages with various special conditions
+for i in range(1, 11):
+    special_notes = ""
+    if i % 3 == 0:
+        special_notes = "Wrong address listed. Will be corrected at 10:20 AM."
+    elif i % 5 == 0:
+        special_notes = "Delayed on flight---will not arrive to depot until 12:00."
     
-    for package in assigned_packages:
-        print(f"Package {package['package_id']} to {package['delivery_address']} is assigned to Truck {package['assigned_truck_id']}")
-        
-        # Check if the package has a delivery window constraint
-        if package["delivery_window"] != "None":
-            delivery_start, delivery_end = package["delivery_window"].split('-')
-            if current_time < delivery_start or current_time > delivery_end:
-                print(f"Package {package['package_id']} is outside its delivery window.")
-        
-        # Priority evaluation
-        if package["package_priority"] == "High":
-            print(f"Package {package['package_id']} is high priority and needs to be prioritized.")
+    package = Package(
+        id_number=i,
+        delivery_address=f"Address {i}",
+        delivery_city="Salt Lake City",
+        delivery_state="UT",
+        delivery_zip="84101",
+        delivery_deadline="10:00",
+        package_mass=5,
+        special_notes=special_notes,
+        delivery_status="Pending"
+    )
 
+    manager.add_package(package)
 
-# Display package delivery status for each truck
-def display_package_delivery_status(ht, trucks):
-    for truck in trucks:
-        assigned_packages = truck.get_assigned_packages(ht)
-        print(f"\nTruck {truck.id} Delivery Status:")
-        for package in assigned_packages:
-            print(f"Package ID: {package['package_id']}, Status: {package['status']}, Truck ID: {package['assigned_truck_id']}, Address: {package['delivery_address']}")
-            if package["delivery_timestamp"]:
-                print(f"Delivery Timestamp: {package['delivery_timestamp']}")
-            if package["en_route_timestamp"]:
-                print(f"En Route Timestamp: {package['en_route_timestamp']}")
-            if package["delivery_window"] != "None":
-                print(f"Delivery Window: {package['delivery_window']}")
-            print(f"Priority: {package['package_priority']}")
+# Simulating deliveries for all packages at different times
+current_time = timedelta(hours=9, minutes=30)  # Before address correction
+for i in range(1, 11):
+    print(manager.handle_package_delivery(i, current_time))  # Delayed messages or on-time deliveries
 
-# Creating HashTable
-ht = HashTable()
-
-# Creating Packages
-package1 = Package(id_number=1, delivery_address="123 Main St", priority="High", delivery_window="09:00-11:00")
-package2 = Package(id_number=2, delivery_address="456 Oak St", priority="Low", delivery_window="10:00-12:00")
-package3 = Package(id_number=3, delivery_address="789 Pine St", priority="Normal", delivery_window="None")
-
-# Adding Packages to HashTable
-ht.insert(package1)
-ht.insert(package2)
-ht.insert(package3)
-
-# Creating Trucks
-truck1 = Truck(truck_id=1)
-truck2 = Truck(truck_id=2)
-
-# Assigning packages to trucks
-truck1.assign_package(package1)
-truck1.assign_package(package2)
-truck2.assign_package(package3)
-
-# Creating a list of trucks for displaying delivery status
-trucks = [truck1, truck2]
-
-# Displaying Package Delivery Status
-display_package_delivery_status(ht, trucks)
-
-# Evaluating delivery constraints for truck1
-current_time = "09:30"  # Example current time
-evaluate_delivery_constraints(truck1, ht, current_time)
-
+current_time = timedelta(hours=10, minutes=30)  # After address correction
+for i in range(1, 11):
+    print(manager.handle_package_delivery(i, current_time))  # Final delivery status
