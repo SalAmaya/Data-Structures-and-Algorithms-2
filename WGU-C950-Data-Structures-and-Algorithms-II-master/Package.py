@@ -20,22 +20,18 @@ class Package:
         self.en_route_timestamp = None
         self.delivery_timestamp = None
 
-
     # Returns True if the Package is assigned to a Truck
     def is_truck_assigned(self):
-        if self.assigned_truck_id is None:
-            return False
-        return True
-
+        return self.assigned_truck_id is not None
 
     # Returns the id of the Truck that must deliver the Package
     def get_required_truck_id(self):
         if "Can only be on truck" in self.special_notes:
-            # Find the specific Truck
-            specified_truck_id = [int(i) for i in self.special_notes.split() if i.isdigit()][0]
-            return specified_truck_id
+            # Find the specific Truck ID from special notes
+            specified_truck_id = [int(i) for i in self.special_notes.split() if i.isdigit()]
+            if specified_truck_id:
+                return specified_truck_id[0]
         return None
-
 
     # If the Package arrives at the depot late, this function returns the delayed arrival time
     def get_delayed_arrival_time(self):
@@ -48,13 +44,11 @@ class Package:
                     return delayed_arrival_timedelta
                 except:
                     pass
-        # Packages with the wrong address will also be considered delayed Packages and be able to get delivered after
-        # the address is updated, at 10:20 AM
+        # Address is wrong and corrected at 10:20 AM
         if "Wrong address listed" in self.special_notes:
-            delayed_arrival_timedelta = timedelta(hours=10, minutes=20)
+            delayed_arrival_timedelta = timedelta(hours=10, minutes=20)  # Address correction at 10:20 AM
             return delayed_arrival_timedelta
         return None
-
 
     # Converts the delivery_deadline from String format to timedelta format and returns the timedelta value
     def get_delivery_deadline_timedelta(self):
@@ -89,5 +83,34 @@ class DeliveryManager:
                 else:
                     return f"Package {package_id} has been delivered."
             else:
+                # If there are no delays
                 return f"Package {package_id} has been delivered on time."
         return "Package not found."
+
+
+# Example usage
+
+# Creating Package #9 with incorrect address (will be corrected at 10:20 AM)
+package9 = Package(
+    id_number=9,
+    delivery_address="Third District Juvenile Court",  # Wrong address
+    delivery_city="Salt Lake City",
+    delivery_state="UT",
+    delivery_zip="84101",
+    delivery_deadline="10:00",
+    package_mass=5,
+    special_notes="Wrong address listed. Will be corrected at 10:20 AM.",
+    delivery_status="Pending"
+)
+
+# Creating Delivery Manager and adding the package
+manager = DeliveryManager()
+manager.add_package(package9)
+
+# Testing delivery at different times
+current_time = timedelta(hours=9, minutes=30)  # Before address correction
+print(manager.handle_package_delivery(9, current_time))  # Expect a delayed message due to wrong address
+
+current_time = timedelta(hours=10, minutes=30)  # After address correction
+print(manager.handle_package_delivery(9, current_time))  # Should say "Package 9 has been delivered."
+
