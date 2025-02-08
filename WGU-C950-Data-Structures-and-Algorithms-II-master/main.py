@@ -1,4 +1,4 @@
-# Henry Trieu, WGU ID #001306217
+# Salvador Amaya, ID: 010348952
 
 import csv
 from datetime import datetime, timedelta
