@@ -131,4 +131,3 @@ current_time = timedelta(hours=current_time.hour, minutes=current_time.minute)
 
 # Display package details at the entered time
 manager.display_package_at_time(current_time)
-
