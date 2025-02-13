@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 
-
 class Package:
     def __init__(self, id_number, delivery_address, delivery_city, delivery_state, delivery_zip, delivery_deadline,
                  package_mass, special_notes, delivery_status):
@@ -54,6 +53,22 @@ class Package:
                 pass
 
 
+class Truck:
+    def __init__(self, truck_id, driver_name, capacity):
+        self.truck_id = truck_id
+        self.driver_name = driver_name
+        self.capacity = capacity
+        self.packages = []  # List to hold packages assigned to this truck
+
+    def assign_package(self, package):
+        if len(self.packages) < self.capacity:
+            self.packages.append(package)
+            package.assigned_truck_id = self.truck_id
+            package.on_truck = True
+        else:
+            print(f"Truck {self.truck_id} is full, cannot assign more packages.")
+
+
 class DeliveryManager:
     def __init__(self):
         self.packages = {}  # Dictionary to store packages by their ID
@@ -76,6 +91,12 @@ class DeliveryManager:
             else:
                 return f"Package {package_id} has been delivered on time."
         return "Package not found."
+
+    def display_package_at_time(self, current_time):
+        for package_id, package in self.packages.items():
+            delivery_status = self.handle_package_delivery(package_id, current_time)
+            truck_info = f"Truck ID: {package.assigned_truck_id}" if package.assigned_truck_id else "No truck assigned"
+            print(f"Package ID: {package_id} | {delivery_status} | {truck_info}")
 
 
 # Example of Bulk Package Creation
@@ -103,11 +124,11 @@ for i in range(1, 11):
 
     manager.add_package(package)
 
-# Simulating deliveries for all packages at different times
-current_time = timedelta(hours=9, minutes=30)  # Before address correction
-for i in range(1, 11):
-    print(manager.handle_package_delivery(i, current_time))  # Delayed messages or on-time deliveries
+# Simulate user input for current time
+user_time_input = input("Enter the current time in HH:MM format: ")
+current_time = datetime.strptime(user_time_input, "%H:%M").time()
+current_time = timedelta(hours=current_time.hour, minutes=current_time.minute)
 
-current_time = timedelta(hours=10, minutes=30)  # After address correction
-for i in range(1, 11):
-    print(manager.handle_package_delivery(i, current_time))  # Final delivery status
+# Display package details at the entered time
+manager.display_package_at_time(current_time)
+
